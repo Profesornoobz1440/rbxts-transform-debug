@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { PackageJson } from "types-package-json";
 import { TransformState } from "./transformState";
-import { findUp, findUpSync } from "find-up";
+import { findUpSync } from "../util/findUp";
 
 export class PackageJsonProvider {
 	public readonly packageJson: PackageJson;

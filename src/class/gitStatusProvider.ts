@@ -1,7 +1,7 @@
 import { TransformState } from "./transformState";
 import gitRepoInfo, { GitRepoInfo } from "git-repo-info";
 import chalk from "chalk";
-import { findUpSync } from "find-up";
+import { findUpSync } from "../util/findUp";
 
 interface GitProp {
 	branch: string;
