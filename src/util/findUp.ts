@@ -1,105 +1,51 @@
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { locatePath, locatePathSync, type Options as LocatePathOptions } from "locate-path";
+import fs from "fs";
+import path from "path";
 
-export const findUpStop: unique symbol = Symbol("findUpStop");
-export type Match = string | typeof findUpStop | undefined;
-
-export type Options = {
-	/**
-	 A directory path where the search halts if no matches are found before reaching this point.
-
-	 Default: Root directory
-	 */
-	readonly stopAt?: string;
-
+export interface FindUpOptions {
+	/** Starting directory (defaults to process.cwd()) */
+	cwd?: string;
+	/** Directory at which to stop (defaults to the filesystem root) */
+	stopAt?: string;
+	/** Maximum number of parent directories to traverse (defaults to Infinity) */
 	limit?: number;
-} & LocatePathOptions;
-
-export function toPath(urlOrPath: string | URL): string {
-	return urlOrPath instanceof URL ? fileURLToPath(urlOrPath) : urlOrPath;
 }
 
-export async function findUpMultiple(
-	name: string | readonly string[] | ((directory: string) => Match | Promise<Match>),
-	options: Options = {},
-): Promise<string[]> {
-	let directory = path.resolve(toPath(options.cwd ?? ""));
-	const { root } = path.parse(directory);
-	const stopAt = path.resolve(directory, toPath(options.stopAt ?? root));
+/**
+ * Synchronously walk up from `cwd` (or process.cwd()) to find the first occurrence of `name`.
+ *
+ * @param name - A filename or array of filenames to look for in each directory.
+ * @param options - Optional settings for where to start, stop, and how many levels to traverse.
+ * @returns Absolute path to the found file, or `undefined` if not found.
+ */
+export function findUpSync(name: string | string[], options: FindUpOptions = {}): string | undefined {
+	const names = Array.isArray(name) ? name : [name];
+	let dir = path.resolve(options.cwd ?? process.cwd());
+	const root = path.parse(dir).root;
+	const stopDir = options.stopAt ? path.resolve(options.stopAt) : root;
 	const limit = options.limit ?? Number.POSITIVE_INFINITY;
-	const patterns = (typeof name === "function" ? [] : [name]).flat() as string[];
+	let depth = 0;
 
-	async function runMatcher(locateOptions: LocatePathOptions & { cwd: string }): Promise<Match> {
-		if (typeof name !== "function") {
-			return locatePath(patterns, locateOptions);
-		}
-		const found = await name(locateOptions.cwd);
-		if (typeof found === "string") {
-			return locatePath([found], locateOptions);
-		}
-		return found;
-	}
-
-	const matches: string[] = [];
 	while (true) {
-		const foundPath = await runMatcher({ ...options, cwd: directory });
-
-		if (foundPath === findUpStop) break;
-		if (typeof foundPath === "string") matches.push(path.resolve(directory, foundPath));
-		if (directory === stopAt || matches.length >= limit) break;
-		directory = path.dirname(directory);
-	}
-
-	return matches;
-}
-
-export function findUpMultipleSync(
-	name: string | readonly string[] | ((directory: string) => Match),
-	options: Options = {},
-): string[] {
-	let directory = path.resolve(toPath(options.cwd ?? ""));
-	const { root } = path.parse(directory);
-	const stopAt = path.resolve(directory, toPath(options.stopAt ?? root));
-	const limit = options.limit ?? Number.POSITIVE_INFINITY;
-	const patterns = (typeof name === "function" ? [] : [name]).flat() as string[];
-
-	function runMatcher(locateOptions: LocatePathOptions & { cwd: string }): Match {
-		if (typeof name !== "function") {
-			return locatePathSync(patterns, locateOptions);
+		for (const candidate of names) {
+			const fullPath = path.join(dir, candidate);
+			if (fs.existsSync(fullPath)) {
+				return fullPath;
+			}
 		}
-		const found = name(locateOptions.cwd);
-		if (typeof found === "string") {
-			return locatePathSync([found], locateOptions);
+
+		if (dir === stopDir || depth >= limit) {
+			break;
 		}
-		return found;
+
+		const parent = path.dirname(dir);
+		if (parent === dir) {
+			// Reached filesystem root
+			break;
+		}
+
+		dir = parent;
+		depth++;
 	}
 
-	const matches: string[] = [];
-	while (true) {
-		const foundPath = runMatcher({ ...options, cwd: directory });
-
-		if (foundPath === findUpStop) break;
-		if (typeof foundPath === "string") matches.push(path.resolve(directory, foundPath));
-		if (directory === stopAt || matches.length >= limit) break;
-		directory = path.dirname(directory);
-	}
-
-	return matches;
-}
-
-export async function findUp(
-	matcher: string | readonly string[] | ((directory: string) => Match | Promise<Match>),
-	options?: Options,
-): Promise<string | undefined> {
-	const matches = await findUpMultiple(matcher, { ...options, limit: 1 });
-	return matches[0];
-}
-
-export function findUpSync(
-	matcher: string | readonly string[] | ((directory: string) => Match),
-	options?: Options,
-): string | undefined {
-	const matches = findUpMultipleSync(matcher, { ...options, limit: 1 });
-	return matches[0];
+	return undefined;
 }
