@@ -1,8 +1,7 @@
 import { TransformState } from "./transformState";
-import fs from "fs";
-import path from "path";
 import gitRepoInfo, { GitRepoInfo } from "git-repo-info";
 import chalk from "chalk";
+import { findUpSync } from "find-up";
 
 interface GitProp {
 	branch: string;
@@ -23,7 +22,8 @@ export class GitStatusProvider {
 
 	public constructor(private state: TransformState) {
 		const currentDir = this.state.program.getCurrentDirectory();
-		if (fs.existsSync(path.join(currentDir, ".git"))) {
+		const gitPath = findUpSync(".git", { cwd: currentDir });
+		if (gitPath !== undefined) {
 			this.tracked = true;
 		}
 
