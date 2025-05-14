@@ -26,10 +26,10 @@
     "find-up": "^7.0.0",
     "git-repo-info": "^2.1.1",
     "types-package-json": "^2.0.39",
-    "typescript": "~5.5.2"
+    "typescript": "^5.5.3"
   },
   "devDependencies": {
-    "@rbxts/types": "^1.0.805",
+    "@rbxts/types": "^1.0.852",
     "@types/node": "^22.5.4",
     "@types/ts-expose-internals": "npm:ts-expose-internals@5.5.2",
     "@typescript-eslint/eslint-plugin": "^8.5.0",
